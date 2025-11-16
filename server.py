@@ -16,14 +16,13 @@ def broadcast(message, sender_conn):
     """Gửi tin nhắn đến TẤT CẢ client ngoại trừ client gửi (sender_conn)."""
     with client_list_lock:
         for client_socket in connected_clients:
-            if client_socket != sender_conn:
-                try:
-                    client_socket.send(message.encode('utf-8'))
-                except:
-                    # Nếu gửi không thành công (client đã ngắt kết nối), xóa client đó
-                    client_socket.close()
-                    if client_socket in connected_clients:
-                        connected_clients.remove(client_socket)
+            try:
+                client_socket.send(message.encode('utf-8'))
+            except:
+                # Nếu gửi không thành công (client đã ngắt kết nối), xóa client đó
+                client_socket.close()
+                if client_socket in connected_clients:
+                    connected_clients.remove(client_socket)
 
 def handle_client(conn, addr):
     """Hàm xử lý kết nối, nhận tin nhắn và gọi hàm broadcast."""
@@ -53,7 +52,7 @@ def handle_client(conn, addr):
             
             # 2. Phát lại tin nhắn đến các client khác
             full_message = f"{client_message}"
-            broadcast(full_message + '\n', conn)
+            broadcast(full_message + '\n')
             
             print(f"[RECV] {full_message}")
 
