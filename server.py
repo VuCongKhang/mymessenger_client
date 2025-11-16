@@ -4,8 +4,8 @@ import threading
 import datetime
 import sys # Để thoát Server an toàn
 
-HOST = '127.0.0.1'
 PORT = 65432
+FILE_NAME = 'data.txt'
 
 # Danh sách toàn cục để lưu trữ các socket client đang hoạt động
 connected_clients = []
@@ -16,13 +16,14 @@ def broadcast(message, sender_conn):
     """Gửi tin nhắn đến TẤT CẢ client ngoại trừ client gửi (sender_conn)."""
     with client_list_lock:
         for client_socket in connected_clients:
-            try:
-                client_socket.send(message.encode('utf-8'))
-            except:
-                # Nếu gửi không thành công (client đã ngắt kết nối), xóa client đó
-                client_socket.close()
-                if client_socket in connected_clients:
-                    connected_clients.remove(client_socket)
+            if client_socket != sender_conn:
+                try:
+                    client_socket.send(message.encode('utf-8'))
+                except:
+                    # Nếu gửi không thành công (client đã ngắt kết nối), xóa client đó
+                    client_socket.close()
+                    if client_socket in connected_clients:
+                        connected_clients.remove(client_socket)
 
 def handle_client(conn, addr):
     """Hàm xử lý kết nối, nhận tin nhắn và gọi hàm broadcast."""
@@ -39,7 +40,7 @@ def handle_client(conn, addr):
 
     try:
         # Gửi thông báo chào mừng ban đầu
-        initial_message = "Chào mừng bạn. Hãy gõ tin nhắn (hoặc 'quit' để thoát):"
+        initial_message = "Chào mừng bạn. Hãy gõ tin nhắn: "
         conn.sendall(initial_message.encode('utf-8'))
 
         while True:
@@ -51,8 +52,8 @@ def handle_client(conn, addr):
             client_message = data.decode('utf-8')
             
             # 2. Phát lại tin nhắn đến các client khác
-            full_message = f"{client_message}"
-            broadcast(full_message + '\n')
+            full_message = f"{addr}: {client_message}"
+            broadcast(full_message + '\n', conn)
             
             print(f"[RECV] {full_message}")
 
@@ -61,7 +62,7 @@ def handle_client(conn, addr):
             log_entry = f"[{timestamp}] {full_message}\n"
             
             with file_lock:
-                with open("data.txt", 'a', encoding='utf-8') as f:
+                with open(FILE_NAME, 'a', encoding='utf-8') as f:
                     f.write(log_entry)
 
     except Exception as e:
@@ -82,7 +83,7 @@ def handle_client(conn, addr):
         print(f"[INFO] Luồng xử lý {addr} đã kết thúc.")
         print(f"[INFO] Số lượng luồng đang hoạt động: {threading.active_count() - 1}")
 
-def start_server():
+def start_server(HOST):
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         server.bind((HOST, PORT))
@@ -108,4 +109,4 @@ def start_server():
         sys.exit()
 
 if __name__ == "__main__":
-    start_server()
+    start_server('127.0.0.1')
